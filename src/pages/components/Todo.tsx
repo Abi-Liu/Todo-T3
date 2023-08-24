@@ -1,4 +1,9 @@
-import React, { useState } from "react";
+import React, {
+  ChangeEvent,
+  FormEvent,
+  MouseEventHandler,
+  useState,
+} from "react";
 import { useSession } from "next-auth/react";
 import { api } from "~/utils/api";
 
@@ -9,19 +14,19 @@ interface TodoProps {
 }
 
 const Todo = ({ id, completed, text }: TodoProps) => {
-  const [checked, setChecked] = useState(completed);
-  const className = checked ? "line-through" : "";
+  const [show, setShow] = useState(false);
+  const [input, setInput] = useState("");
+  const className = completed ? "line-through" : "";
   const ctx = api.useContext();
 
   const updateTodo = api.todo.updateComplete.useMutation({
     onSuccess: () => {
       void ctx.todo.getTodosByUser.invalidate();
-      setChecked((prev) => !prev);
     },
   });
 
   function handleChange() {
-    updateTodo.mutate({ id, complete: checked });
+    updateTodo.mutate({ id, complete: completed });
   }
 
   const deleteTodo = api.todo.delete.useMutation({
@@ -30,18 +35,36 @@ const Todo = ({ id, completed, text }: TodoProps) => {
     },
   });
 
+  const updateTodoText = api.todo.updateTodo.useMutation({
+    onSuccess: () => {
+      void ctx.todo.getTodosByUser.invalidate();
+    },
+  });
+
+  function edit() {
+    setShow(true);
+  }
+
+  function handleInputChange(e: ChangeEvent<HTMLInputElement>) {
+    setInput(e.target.value);
+  }
+
+  function submitChange() {
+    updateTodoText.mutate({ id, text: input });
+  }
+
   return (
     <>
-      <li className="flex gap-2">
+      <li className="mt-2 flex gap-2">
         <input
           onChange={handleChange}
           type="checkbox"
-          checked={checked}
+          checked={completed}
           className="checkbox"
         />
         <p className={`${className}`}>{text}</p>
         <button
-          className="btn btn-square"
+          className="btn btn-square btn-xs"
           onClick={() => deleteTodo.mutate({ id })}
         >
           <svg
@@ -59,6 +82,19 @@ const Todo = ({ id, completed, text }: TodoProps) => {
             />
           </svg>
         </button>
+        <button onClick={edit}>Edit</button>
+        {show && (
+          <>
+            <input
+              type="text"
+              value={input}
+              onChange={handleInputChange}
+            ></input>
+            <button onClick={submitChange} type="submit">
+              Change
+            </button>
+          </>
+        )}
       </li>
     </>
   );
